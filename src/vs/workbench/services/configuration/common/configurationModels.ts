@@ -29,6 +29,10 @@ export class WorkspaceConfigurationModel<T> extends CustomConfigurationModel<T> 
 		this._workspaceConfiguration = this.consolidate();
 	}
 
+	get id(): string {
+		return this._raw['ID'];
+	}
+
 	get folders(): URI[] {
 		return this._folders;
 	}

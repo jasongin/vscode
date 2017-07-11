@@ -47,7 +47,7 @@ suite('WorkspaceConfigurationService - Node', () => {
 
 	function createService(workspaceDir: string, globalSettingsFile: string): TPromise<WorkspaceService> {
 		const environmentService = new SettingsTestEnvironmentService(parseArgs(process.argv), process.execPath, globalSettingsFile);
-		const service = new WorkspaceServiceImpl({ folders: [URI.file(workspaceDir)], id: workspaceDir, ctime: void 0, workspaceConfiguration: void 0 }, environmentService);
+		const service = new WorkspaceServiceImpl(workspaceDir, environmentService);
 
 		return service.initialize().then(() => service);
 	}

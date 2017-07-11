@@ -19,8 +19,8 @@ import uri from 'vs/base/common/uri';
 import strings = require('vs/base/common/strings');
 import { IResourceInput } from 'vs/platform/editor/common/editor';
 import { LegacyWorkspace, Workspace } from 'vs/platform/workspace/common/workspace';
-import { WorkspaceService, EmptyWorkspaceServiceImpl, WorkspaceServiceImpl, WorkspaceData } from 'vs/workbench/services/configuration/node/configuration';
-import { realpath, stat } from 'vs/base/node/pfs';
+import { WorkspaceService, EmptyWorkspaceServiceImpl, WorkspaceServiceImpl } from 'vs/workbench/services/configuration/node/configuration';
+import { realpath } from 'vs/base/node/pfs';
 import { EnvironmentService } from 'vs/platform/environment/node/environmentService';
 import path = require('path');
 import gracefulFs = require('graceful-fs');
@@ -35,7 +35,6 @@ import { StorageService, inMemoryLocalStorageInstance } from 'vs/platform/storag
 import { webFrame } from 'electron';
 
 import fs = require('fs');
-import { createHash } from 'crypto';
 gracefulFs.gracefulify(fs); // enable gracefulFs
 
 export function startup(configuration: IWindowConfiguration): TPromise<void> {
@@ -136,13 +135,13 @@ function openWorkbench(configuration: IWindowConfiguration, options: IOptions): 
 }
 
 function createAndInitializeWorkspaceService(configuration: IWindowConfiguration, environmentService: EnvironmentService): TPromise<WorkspaceService> {
-	return resolveWorkspaceData(configuration).then(workspaceData => {
-		const workspaceService = workspaceData ? new WorkspaceServiceImpl(workspaceData, environmentService) : new EmptyWorkspaceServiceImpl(environmentService);
+	return validateWorkspacePath(configuration).then(() => {
+		const workspaceService = configuration.workspacePath ? new WorkspaceServiceImpl(configuration.workspacePath, environmentService) : new EmptyWorkspaceServiceImpl(environmentService);
 		return workspaceService.initialize().then(() => workspaceService);
 	});
 }
 
-function resolveWorkspaceData(configuration: IWindowConfiguration): TPromise<WorkspaceData> {
+function validateWorkspacePath(configuration: IWindowConfiguration): TPromise<void> {
 	if (!configuration.workspacePath) {
 		return TPromise.as(null);
 	}
@@ -159,18 +158,6 @@ function resolveWorkspaceData(configuration: IWindowConfiguration): TPromise<Wor
 
 		// update config
 		configuration.workspacePath = realWorkspacePath;
-
-		// resolve ctime of workspace
-		return stat(realWorkspacePath).then(folderStat => {
-			const folder = uri.file(realWorkspacePath);
-			const ctime = platform.isLinux ? folderStat.ino : folderStat.birthtime.getTime(); // On Linux, birthtime is ctime, so we cannot use it! We use the ino instead!
-			return {
-				id: createHash('md5').update(folder.fsPath).update(ctime ? String(ctime) : '').digest('hex'),
-				folders: [folder],
-				workspaceConfiguration: null,
-				ctime
-			};
-		});
 	}, error => {
 		errors.onUnexpectedError(error);
 
