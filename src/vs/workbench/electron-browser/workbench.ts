@@ -50,6 +50,8 @@ import { IConfigurationService } from 'vs/platform/configuration/common/configur
 import { WorkspaceService } from 'vs/workbench/services/configuration/node/configuration';
 import { IConfigurationEditingService } from 'vs/workbench/services/configuration/common/configurationEditing';
 import { ConfigurationEditingService } from 'vs/workbench/services/configuration/node/configurationEditingService';
+import { IJSONEditingService } from 'vs/workbench/services/configuration/common/jsonEditing';
+import { JSONEditingService } from 'vs/workbench/services/configuration/node/jsonEditingService';
 import { ContextKeyService } from 'vs/platform/contextkey/browser/contextKeyService';
 import { IKeybindingService } from 'vs/platform/keybinding/common/keybinding';
 import { IKeybindingEditingService, KeybindingsEditingService } from 'vs/workbench/services/keybinding/common/keybindingEditing';
@@ -580,6 +582,10 @@ export class Workbench implements IPartService {
 
 		// Text Model Resolver Service
 		serviceCollection.set(ITextModelService, new SyncDescriptor(TextModelResolverService));
+
+		// JSON Editing
+		const jsonEditingService = this.instantiationService.createInstance(JSONEditingService);
+		serviceCollection.set(IJSONEditingService, jsonEditingService);
 
 		// Configuration Editing
 		this.configurationEditingService = this.instantiationService.createInstance(ConfigurationEditingService);
