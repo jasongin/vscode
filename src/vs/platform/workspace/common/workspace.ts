@@ -87,6 +87,11 @@ export interface IWorkspace {
 	 * Mutliple roots in this workspace. First entry is master and never changes.
 	 */
 	readonly roots: URI[];
+
+	/**
+	 * the location of the workspace configuration
+	 */
+	readonly configuration?: URI;
 }
 
 export class LegacyWorkspace implements ILegacyWorkspace {

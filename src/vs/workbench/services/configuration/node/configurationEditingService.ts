@@ -20,7 +20,7 @@ import * as editorCommon from 'vs/editor/common/editorCommon';
 import { EditOperation } from 'vs/editor/common/core/editOperation';
 import { Range } from 'vs/editor/common/core/range';
 import { Selection } from 'vs/editor/common/core/selection';
-import { IWorkspaceContextService, Workspace } from 'vs/platform/workspace/common/workspace';
+import { IWorkspaceContextService } from 'vs/platform/workspace/common/workspace';
 import { IEnvironmentService } from 'vs/platform/environment/common/environment';
 import { ITextFileService } from 'vs/workbench/services/textfile/common/textfiles';
 import { IConfigurationService, IConfigurationOverrides } from 'vs/platform/configuration/common/configuration';
@@ -259,7 +259,7 @@ export class ConfigurationEditingService implements IConfigurationEditingService
 
 	private getConfigurationEditOperation(target: ConfigurationTarget, config: IConfigurationValue, overrides: IConfigurationOverrides): IConfigurationEditOperation {
 
-		const workspace: Workspace = <Workspace>this.contextService.getWorkspace();
+		const workspace = this.contextService.getWorkspace();
 
 		// Check for standalone workspace configurations
 		if (config.key) {
@@ -297,7 +297,7 @@ export class ConfigurationEditingService implements IConfigurationEditingService
 	}
 
 	private getConfigurationFileResource(relativePath: string, resource: URI): URI {
-		const workspace: Workspace = <Workspace>this.contextService.getWorkspace();
+		const workspace = this.contextService.getWorkspace();
 		if (workspace) {
 			if (resource) {
 				const root = this.contextService.getRoot(resource);
