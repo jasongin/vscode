@@ -316,9 +316,7 @@ export class WorkspaceServiceImpl extends WorkspaceService {
 
 	constructor(private workspacePath: string, environmentService: IEnvironmentService, private workspaceSettingsRootFolder: string = WORKSPACE_CONFIG_FOLDER_DEFAULT_NAME) {
 		super();
-
 		this.baseConfigurationService = this._register(new GlobalConfigurationService(environmentService));
-		this._register(this.baseConfigurationService.onDidUpdateConfiguration(e => this.onBaseConfigurationChanged(e)));
 	}
 
 	public getUnsupportedWorkspaceKeys(): string[] {
@@ -380,7 +378,6 @@ export class WorkspaceServiceImpl extends WorkspaceService {
 					return TPromise.as(null);
 				} else {
 					this.workspaceConfiguration = this._register(new WorkspaceConfiguration(URI.file(this.workspacePath)));
-					this._register(this.workspaceConfiguration.onDidUpdateConfiguration(() => this.onWorkspaceConfigurationChanged()));
 					return this.workspaceConfiguration.load()
 						.then(() => {
 							const workspaceConfigurationModel = this.workspaceConfiguration.workspaceConfigurationModel;
@@ -389,9 +386,13 @@ export class WorkspaceServiceImpl extends WorkspaceService {
 							}
 							this.workspace = new Workspace(this.workspaceConfiguration.workspaceConfigurationModel.id, '', this.workspaceConfiguration.workspaceConfigurationModel.folders, this.workspaceConfiguration.workspaceConfigurationPath);
 							this.legacyWorkspace = new LegacyWorkspace(this.workspace.roots[0]);
+							this._register(this.workspaceConfiguration.onDidUpdateConfiguration(() => this.onWorkspaceConfigurationChanged()));
 							return null;
 						});
 				}
+			})
+			.then(() => {
+				this._register(this.baseConfigurationService.onDidUpdateConfiguration(e => this.onBaseConfigurationChanged(e)));
 			});
 	}
 
