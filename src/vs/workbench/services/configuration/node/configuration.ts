@@ -383,8 +383,13 @@ export class WorkspaceServiceImpl extends WorkspaceService {
 					this._register(this.workspaceConfiguration.onDidUpdateConfiguration(() => this.onWorkspaceConfigurationChanged()));
 					return this.workspaceConfiguration.load()
 						.then(() => {
+							const workspaceConfigurationModel = this.workspaceConfiguration.workspaceConfigurationModel;
+							if (!workspaceConfigurationModel.id || !workspaceConfigurationModel.folders.length) {
+								return TPromise.wrapError<void>(new Error('Invalid workspace configuraton file ' + this.workspacePath));
+							}
 							this.workspace = new Workspace(this.workspaceConfiguration.workspaceConfigurationModel.id, '', this.workspaceConfiguration.workspaceConfigurationModel.folders, this.workspaceConfiguration.workspaceConfigurationPath);
 							this.legacyWorkspace = new LegacyWorkspace(this.workspace.roots[0]);
+							return null;
 						});
 				}
 			});

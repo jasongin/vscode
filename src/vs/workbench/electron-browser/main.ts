@@ -137,7 +137,7 @@ function openWorkbench(configuration: IWindowConfiguration, options: IOptions): 
 function createAndInitializeWorkspaceService(configuration: IWindowConfiguration, environmentService: EnvironmentService): TPromise<WorkspaceService> {
 	return validateWorkspacePath(configuration).then(() => {
 		const workspaceService = configuration.workspacePath ? new WorkspaceServiceImpl(configuration.workspacePath, environmentService) : new EmptyWorkspaceServiceImpl(environmentService);
-		return workspaceService.initialize().then(() => workspaceService);
+		return workspaceService.initialize().then(() => workspaceService, error => new EmptyWorkspaceServiceImpl(environmentService));
 	});
 }
 
