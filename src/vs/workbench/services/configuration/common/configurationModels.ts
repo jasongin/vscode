@@ -33,6 +33,10 @@ export class WorkspaceConfigurationModel<T> extends CustomConfigurationModel<T> 
 		return this._folders;
 	}
 
+	get workspaceConfiguration(): ConfigurationModel<T> {
+		return this._workspaceConfiguration;
+	}
+
 	protected processRaw(raw: T): void {
 		this._raw = raw;
 
@@ -45,13 +49,13 @@ export class WorkspaceConfigurationModel<T> extends CustomConfigurationModel<T> 
 	}
 
 	private parseFolders(): URI[] {
-		const folders: string[] = this._raw['folders'];
+		const folders: string[] = this._raw['folders'] || [];
 		return distinct(folders.map(folder => URI.parse(folder))
 			.filter(r => r.scheme === Schemas.file)); // only support files for now	;
 	}
 
 	private parseConfigurationModel(section: string): ConfigurationModel<T> {
-		const rawSection = this._raw[section];
+		const rawSection = this._raw[section] || {};
 		const contents = toValuesTree(rawSection, message => console.error(`Conflict in section '${section}' of workspace configuration file ${message}`));
 		return new ConfigurationModel<T>(contents, Object.keys(rawSection));
 	}
