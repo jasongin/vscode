@@ -205,6 +205,7 @@ export interface IWindowConfiguration extends ParsedArgs, IOpenFileRequest {
 	perfWindowLoadTime?: number;
 
 	workspacePath?: string;
+
 	backupPath?: string;
 
 	nodeCachedDataDir: string;
