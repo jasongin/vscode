@@ -175,6 +175,11 @@ export class WorkspaceService extends Disposable implements IWorkspaceConfigurat
 	protected readonly _onDidChangeWorkspaceRoots: Emitter<void> = this._register(new Emitter<void>());
 	public readonly onDidChangeWorkspaceRoots: Event<void> = this._onDidChangeWorkspaceRoots.event;
 
+	constructor() {
+		super();
+		this._configuration = new Configuration(new BaseConfiguration(new ConfigurationModel<any>(), new ConfigurationModel<any>()), new ConfigurationModel<any>(), new StrictResourceMap<FolderConfigurationModel<any>>(), this.workspace);
+	}
+
 	public getLegacyWorkspace(): ILegacyWorkspace {
 		return this.legacyWorkspace;
 	}
@@ -717,11 +722,11 @@ function resolveStat(resource: URI): TPromise<IStat> {
 
 export class Configuration<T> extends BaseConfiguration<T> {
 
-	constructor(private _baseConfiguration: Configuration<T>, workspaceConfiguration: ConfigurationModel<T>, protected folders: StrictResourceMap<FolderConfigurationModel<T>>, workspace: Workspace) {
+	constructor(private _baseConfiguration: BaseConfiguration<T>, workspaceConfiguration: ConfigurationModel<T>, protected folders: StrictResourceMap<FolderConfigurationModel<T>>, workspace: Workspace) {
 		super(_baseConfiguration.defaults, _baseConfiguration.user, workspaceConfiguration, folders, workspace);
 	}
 
-	updateBaseConfiguration(baseConfiguration: Configuration<T>): boolean {
+	updateBaseConfiguration(baseConfiguration: BaseConfiguration<T>): boolean {
 		const current = new Configuration(this._baseConfiguration, this._workspaceConfiguration, this.folders, this._workspace);
 
 		this._defaults = baseConfiguration.defaults;
