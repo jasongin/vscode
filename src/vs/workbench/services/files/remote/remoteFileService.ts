@@ -5,10 +5,11 @@
 
 'use strict';
 
-import os = require('os');
-import crypto = require('crypto');
-import paths = require('path');
 import assert = require('assert');
+import crypto = require('crypto');
+import net = require('net');
+import os = require('os');
+import paths = require('path');
 
 import { isParent, FileOperation, FileOperationEvent, IContent, IFileService, IResolveFileOptions, IResolveFileResult, IResolveContentOptions, IFileStat, IStreamContent, FileOperationError, FileOperationResult, IUpdateContentOptions, FileChangeType, IImportResult, MAX_FILE_SIZE, FileChangesEvent, IFilesConfiguration } from 'vs/platform/files/common/files';
 import { isEqualOrParent } from 'vs/base/common/paths';
@@ -27,6 +28,9 @@ import encoding = require('vs/base/node/encoding');
 import Event, { Emitter } from 'vs/base/common/event';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
 import { IEncodingOverride } from 'vs/workbench/services/files/node/fileService';
+
+import { BufferReader } from 'protobufjs/light';
+import { MessageValue, RequestMessage, ResponseMessage, EventMessage, ErrorMessage, MessageEnvelope } from 'vs/workbench/services/files/remote/messages';
 
 export interface IFileServiceOptions {
 	remoteEndpoint: string;
@@ -53,6 +57,11 @@ export class FileService implements IFileService {
 
 	private currentWorkspaceRootsCount: number;
 
+	private static readonly MaxSequence = 1 << 53 - 1;
+	private _sequence: number;
+	private _socket: net.Socket;
+	private _readBuffer: Buffer;
+
 	constructor(
 		private contextService: IWorkspaceContextService,
 		private configurationService: IConfigurationService,
@@ -72,7 +81,110 @@ export class FileService implements IFileService {
 			this.options.errorLogger = console.error;
 		}
 
+		this._sequence = 0;
+		this._readBuffer = new Buffer(0);
+
+		let host = this.options.remoteEndpoint.split(':')[0];
+		let port = parseInt(this.options.remoteEndpoint.split(':')[1]);
+		this._socket = net.connect(port, host);
+		this._socket.on('connect', this.onSocketConnect.bind(this));
+		this._socket.on('error', this.onSocketError.bind(this));
+		this._socket.on('close', this.onSocketClose.bind(this));
+		this._socket.on('data', this.onSocketData.bind(this));
+		this._socket.on('end', this.onSocketEnd.bind(this));
+
+	}
+
+	private onSocketConnect() {
+		console.log('RemoteFileService: onSocketConnect');
 		this.registerListeners();
+	}
+
+	private onSocketError(err: Error) {
+		console.log('RemoteFileService: onSocketError: ' + err.message);
+	}
+
+	private onSocketClose(hadError: boolean) {
+		console.log('RemoteFileService: onSocketClose');
+	}
+
+	private onSocketData(data: Buffer) {
+		console.log('RemoteFileService: onSocketData [' + data.length + ']');
+
+		this._readBuffer = Buffer.concat([this._readBuffer, data]);
+		if (this._readBuffer.length < 8)
+		{
+			// Wait for more data.
+			return;
+		}
+
+		// Read the length prefix separately, to ensure
+		// the entire message has arrived before decoding it.
+		let lengthReader = new BufferReader(this._readBuffer);
+		let messageLength = lengthReader.int32();
+		if (lengthReader.len - lengthReader.pos < messageLength) {
+			// Wait for more data.
+			return;
+		}
+
+		let endPos = lengthReader.pos + messageLength;
+		let messageBuffer = this._readBuffer.slice(lengthReader.pos, endPos);
+		this._readBuffer = this._readBuffer.slice(endPos)
+
+		let envelope = MessageEnvelope.decode(messageBuffer);
+		this.onMessageReceived(envelope);
+	}
+
+	private onSocketEnd() {
+		console.log('RemoteFileService: onSocketEnd');
+	}
+
+	private onMessageReceived(envelope: MessageEnvelope) {
+		console.log('RemoteFileService: onMessageReceived #' + envelope.id + ' ' + envelope.service);
+		if (envelope.response) {
+			this.onResponseMessageReceived(envelope.response);
+		} else if (envelope.event) {
+			this.onEventMessageReceived(envelope.event);
+		} else if (envelope.error) {
+			this.onErrorMessageReceived(envelope.error);
+		}
+	}
+
+	private onResponseMessageReceived(response: ResponseMessage) {
+		console.log('RemoteFileService: onResponseMessageReceived #' + response.requestId);
+
+		// TODO: Look up and resolve the request promise
+
+	}
+
+	private onEventMessageReceived(event: EventMessage) {
+		console.log('RemoteFileService: onEventMessageReceived:' + event.event);
+
+		// TODO: Route watcher events
+	}
+
+	private onErrorMessageReceived(error: ErrorMessage) {
+		console.log('RemoteFileService: onErrorMessageReceived !' + error.failedMessageId);
+
+		// TODO: Look up and reject the request promise
+
+	}
+
+	private sendRequestMessage(request: RequestMessage) : TPromise<ResponseMessage> {
+		var envelope = new MessageEnvelope();
+		envelope.service = 'file';
+		envelope.request = request;
+		this.sendMessage(envelope);
+
+		// TODO: Return a promise that will get resolved when the response arrives.
+		return undefined;
+	}
+
+	private sendMessage(envelope: MessageEnvelope) {
+		this._sequence = (this._sequence < FileService.MaxSequence ? this._sequence + 1 : 0);
+
+		let data = MessageEnvelope.encodeDelimited(envelope).finish();
+		this._socket.write(data);
 	}
 
 	private registerListeners(): void {
