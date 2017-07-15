@@ -14,6 +14,7 @@ import uri from 'vs/base/common/uri';
 import { toResource } from 'vs/workbench/common/editor';
 import { FileOperation, FileOperationEvent, IFileService, IFilesConfiguration, IResolveFileOptions, IFileStat, IResolveFileResult, IContent, IStreamContent, IImportResult, IResolveContentOptions, IUpdateContentOptions, FileChangesEvent } from 'vs/platform/files/common/files';
 import { FileService as NodeFileService, IFileServiceOptions, IEncodingOverride } from 'vs/workbench/services/files/node/fileService';
+import { FileService as RemoteFileService, IFileServiceOptions as IRemoteFileServiceOptions } from 'vs/workbench/services/files/remote/remoteFileService';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
 import { IWorkspaceContextService } from 'vs/platform/workspace/common/workspace';
 import { Action } from 'vs/base/common/actions';
@@ -70,17 +71,29 @@ export class FileService implements IFileService {
 			watcherIgnoredPatterns = Object.keys(configuration.files.watcherExclude).filter(k => !!configuration.files.watcherExclude[k]);
 		}
 
-		// build config
-		const fileServiceConfig: IFileServiceOptions = {
-			errorLogger: (msg: string) => this.onFileServiceError(msg),
-			encodingOverride: this.getEncodingOverrides(),
-			watcherIgnoredPatterns,
-			verboseLogging: environmentService.verbose,
-			useExperimentalFileWatcher: configuration.files.useExperimentalFileWatcher
-		};
-
-		// create service
-		this.raw = new NodeFileService(contextService, configurationService, fileServiceConfig);
+		let workspaceConfig: any = configuration['workspace'];
+		if (workspaceConfig && workspaceConfig.remote) {
+			// create remote file service
+			const fileServiceConfig: IRemoteFileServiceOptions = {
+				remoteEndpoint: workspaceConfig.remote,
+				errorLogger: (msg: string) => this.onFileServiceError(msg),
+				encodingOverride: this.getEncodingOverrides(),
+				watcherIgnoredPatterns,
+				verboseLogging: environmentService.verbose,
+				useExperimentalFileWatcher: configuration.files.useExperimentalFileWatcher
+			};
+			this.raw = new RemoteFileService(contextService, configurationService, fileServiceConfig);
+		} else {
+			// create local file service
+			const fileServiceConfig: IFileServiceOptions = {
+				errorLogger: (msg: string) => this.onFileServiceError(msg),
+				encodingOverride: this.getEncodingOverrides(),
+				watcherIgnoredPatterns,
+				verboseLogging: environmentService.verbose,
+				useExperimentalFileWatcher: configuration.files.useExperimentalFileWatcher
+			};
+			this.raw = new NodeFileService(contextService, configurationService, fileServiceConfig);
+		}
 
 		// Listeners
 		this.registerListeners();
